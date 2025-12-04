@@ -12,23 +12,86 @@ use App\Http\Requests\UpdateEventRequest;
 class EventController extends Controller
 {
     /**
-     * Get all published events.
+     * Display a listing of events with filtering
      *
      * GET /api/events
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $events = Event::query()
-            ->where('is_published', true)
-            ->orderBy('starts_at', 'asc')
-            ->paginate(15);
+        $query = Event::query()->with('venue');
 
-        return response()->json(
-            [
-                'success' => true,
-                'data' => $events
-            ]
-        );
+        // Only show published events (unless admin)
+        $query->where('is_published', true);
+
+        // Search by name or description
+        if ($request->has('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        // Filter by city
+        if ($request->has('city')) {
+            $query->where('city', $request->input('city'));
+        }
+
+        // Filter by category
+        if ($request->has('category')) {
+            $query->where('category', $request->input('category'));
+        }
+
+        // Filter by venue
+        if ($request->has('venue_id')) {
+            $query->where('venue_id', $request->input('venue_id'));
+        }
+
+        // Filter by date range
+        if ($request->has('from')) {
+            $query->where('starts_at', '>=', $request->input('from'));
+        }
+        if ($request->has('to')) {
+            $query->where('starts_at', '<=', $request->input('to'));
+        }
+
+        // Filter by price range
+        if ($request->has('min_price')) {
+            $query->where('price', '>=', $request->input('min_price'));
+        }
+        if ($request->has('max_price')) {
+            $query->where('price', '<=', $request->input('max_price'));
+        }
+
+        // Filter by free events
+        if ($request->has('is_free')) {
+            $query->where('is_free', $request->boolean('is_free'));
+        }
+
+        // Filter by featured
+        if ($request->has('is_featured')) {
+            $query->where('is_featured', $request->boolean('is_featured'));
+        }
+
+        // Sorting
+        $sortField = $request->input('sort', 'starts_at');
+        $sortOrder = $request->input('order', 'asc');
+
+        $allowedSorts = ['starts_at', 'price', 'name', 'created_at', 'view_count'];
+        if (in_array($sortField, $allowedSorts)) {
+            $query->orderBy($sortField, $sortOrder === 'desc' ? 'desc' : 'asc');
+        }
+
+        // Pagination
+        $perPage = $request->input('per_page', 15);
+        $perPage = min($perPage, 100); // Maximum 100 per page
+
+        $events = $query->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'data' => $events,
+        ]);
     }
 
     /**
@@ -66,6 +129,9 @@ class EventController extends Controller
      */
     public function show(Event $event): JsonResponse
     {
+        // Load venue relationship
+        $event->load('venue');
+
         // Görüntülenme sayısını artır
         $event->increment('view_count');
 

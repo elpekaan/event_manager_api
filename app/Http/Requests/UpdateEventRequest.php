@@ -40,6 +40,9 @@ class UpdateEventRequest extends FormRequest
             'sale_starts_at' => 'nullable|date',
             'sale_ends_at' => 'nullable|date|after:sale_starts_at|before_or_equal:starts_at',
 
+            // Venue
+            'venue_id' => 'nullable|integer|exists:venues,id',
+
             // Location
             'venue_name' => 'sometimes|string|max:255',
             'venue_address' => 'sometimes|string|max:500',

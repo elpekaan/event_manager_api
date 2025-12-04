@@ -94,6 +94,9 @@ class Event extends Model
         // İstatistikler (manuel güncellenenler)
         'rating',
         'review_count',
+
+        // Venue
+        'venue_id',
     ];
 
     /**
@@ -166,5 +169,10 @@ class Event extends Model
     public function organizer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'organizer_id');
+    }
+
+    public function venue(): BelongsTo
+    {
+        return $this->belongsTo(Venue::class);
     }
 }
